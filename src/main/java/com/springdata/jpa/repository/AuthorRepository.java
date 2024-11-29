@@ -34,12 +34,12 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
 	
 	
 	@Modifying
-	@Transactional
+//	@Transactional
 	@Query("update Author a set a.email = :email where a.id = :id")
-	void updateAuthorEmail(String email, int id);
+	Author updateAuthorEmail(String email, int id);
 	
 //	@Override
-	int deleteAuthorsById();
+//	int deleteAuthorsById();
 	
 	
 //	Author updateAuthorEmailById(String email, int id);

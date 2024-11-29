@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: Spring Data JPA
+    
+  datasource:
+    url: jdbc:mysql://localhost:3306/my_newData?createDatabaseIfNotExist=true
+    username: root
+    password: smitshah
+    driver-class-name: com.mysql.jdbc.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: update
+      database: mysql
+    show-sql: true
+     
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+      bindings:
+        createLog-out:
+          destination: spring-cloud-topic
+          content-type: application/json
+          
+management:
+  endpoints:
+    web:
+      exposure:
+        include: bindings
+
+
