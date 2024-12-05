@@ -5,6 +5,7 @@ import com.springdata.jpa.repository.AuthorRepository;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.stream.function.StreamBridge;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
-@EnableAsync
 public class AuthorService {
 	
 	@Autowired
@@ -25,32 +25,17 @@ public class AuthorService {
 	private StreamBridge streamBridge;
 	
 	
-	public List<Author> getAllAuthors() {
+	@Async
+	public CompletableFuture<List<Author>> getAllAuthors() {
 		try {
 			List<Author> authors = authorRepository.findAll();
-			sendAuthorMessage("Authors fetched successfully" + authors.size(), "info");
-			return authors;
-		} catch ( Exception e) {
-			sendAuthorMessage("Error fetching authors "+ e.getMessage(), "error");
-			return null;
+			return CompletableFuture.completedFuture(authors);
+		} catch ( Exception e) { //Change the Exception and always use the specific exception and register the particular to service method which can we passed by controller
+			return CompletableFuture.failedFuture(null);
 		}
 		
 	}
 	
-	public Author addAuthor(Author author) {
-		return authorRepository.save(author);
-	}
-	
-	
-	public void addMultipleAuthors(List<Author> authors, int batchSize) {
-		
-		for (int i = 0; i < authors.size(); i += batchSize) {
-			int end = Math.min(i + batchSize, authors.size());
-			List<Author> authorBatch = authors.subList(i, end);
-			authorRepository.saveAllAndFlush(authorBatch);
-		}
-	}
-
 	@Async
 	public CompletableFuture<List<Author>> addMultipleAuthorsAsync(List<Author> authors, int batchSize) {
 		List <Author> result = 
@@ -59,10 +44,21 @@ public class AuthorService {
 				.map(authorRepository::saveAllAndFlush)
 				.flatMap(List::stream)
 				.collect(Collectors.toList());
-		sendAuthorMessage("Yeah!! we added the authors successfully and asynchronously" + result.size(), "info");
 		return CompletableFuture.completedFuture(result);
 	}
 	
+	@Async
+	public CompletableFuture<Void> deleteAllAuthorsAsync() {
+		try {
+			authorRepository.deleteAll();
+			sendAuthorMessage("All authors deleted successfully", "info");
+			return CompletableFuture.completedFuture(null); 
+		} catch (Exception e) {
+			sendAuthorMessage("Error deleting authors: " + e.getMessage(), "error");
+			return CompletableFuture.failedFuture(e);
+		}
+	}
+
 	public void sendAuthorMessage(String message, String info) {
 		JSONObject payload = new JSONObject();
 		payload.put("message", message);
@@ -70,22 +66,5 @@ public class AuthorService {
 		streamBridge.send("createLog-out", payload.toString());
 	}
 	
-	
-	public void updateAuthorEmail(String email, int id) {
-		Author a = authorRepository.updateAuthorEmail(email, id);
-	}
-	
-	public void deleteAllAuthors() {
-		try {
-			authorRepository.deleteAll();
-			sendAuthorMessage("All authors deleted successfully", "info");
-		} catch (Exception e) {
-			sendAuthorMessage("Error deleting authors " + e.getMessage(), "error");
-		}
-	}
-	
-	public void deleteAuthorById(int id) {
-		authorRepository.deleteById(id);
-	}
 	
 }
